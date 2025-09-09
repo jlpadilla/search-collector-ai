@@ -52,6 +52,12 @@ type Transformer interface {
 
 // TransformConfig holds configuration for transformers
 type TransformConfig struct {
+	// Transformer type to use (base, resource-specific, configurable)
+	TransformerType string `json:"transformerType"`
+	
+	// Path to configuration file (for configurable transformer)
+	ConfigFile string `json:"configFile"`
+	
 	// Fields to extract from resources (using dot notation)
 	ExtractFields []string `json:"extractFields"`
 	

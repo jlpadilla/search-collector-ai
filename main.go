@@ -13,6 +13,8 @@ import (
 	"github.com/jlpadilla/search-collector-ai/pkg/discovery"
 	"github.com/jlpadilla/search-collector-ai/pkg/handler"
 	"github.com/jlpadilla/search-collector-ai/pkg/informer"
+	"github.com/jlpadilla/search-collector-ai/pkg/reconciler"
+	"github.com/jlpadilla/search-collector-ai/pkg/status"
 	"github.com/jlpadilla/search-collector-ai/pkg/transformer"
 	k8sdiscovery "k8s.io/client-go/discovery"
 	"k8s.io/client-go/dynamic"
@@ -49,15 +51,37 @@ func main() {
 	
 	// Create transformer
 	transformConfig := &transformer.TransformConfig{
+		TransformerType:       cfg.TransformerType,
+		ConfigFile:            cfg.TransformConfigFile,
 		ExtractFields:         cfg.ExtractFields,
 		DiscoverRelationships: cfg.DiscoverRelationships,
 		IncludeLabels:         cfg.IncludeLabels,
 		IncludeAnnotations:    cfg.IncludeAnnotations,
 	}
-	t := transformer.NewBaseTransformer(transformConfig)
+	
+	// Create transformer using registry
+	t, err := transformer.CreateTransformer(cfg.TransformerType, transformConfig)
+	if err != nil {
+		klog.Warningf("Failed to create %s transformer: %v, using default", cfg.TransformerType, err)
+		t = transformer.GetDefaultTransformer(transformConfig)
+	}
+	klog.Infof("Using transformer type: %s", cfg.TransformerType)
+	
+	// Create reconciler
+	reconcilerConfig := reconciler.DefaultReconcilerConfig()
+	reconcilerConfig.CleanupInterval = cfg.ReconcilerCleanupInterval
+	reconcilerConfig.DeletedRetention = cfg.ReconcilerDeletedRetention
+	reconcilerConfig.MemoryThresholdMB = cfg.ReconcilerMemoryThresholdMB
+	r := reconciler.NewMemoryReconciler(reconcilerConfig)
+	
+	// Start reconciler
+	if err := r.Start(); err != nil {
+		klog.Fatalf("Failed to start reconciler: %v", err)
+	}
+	defer r.Stop()
 	
 	// Create event handler
-	eventHandler := handler.NewTransformHandler(t)
+	eventHandler := handler.NewTransformHandler(t, r)
 	
 	// Create informer manager
 	manager := informer.NewManager(dynamicClient)
@@ -114,6 +138,17 @@ func main() {
 	sigCh := make(chan os.Signal, 1)
 	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
 	
+	// Start status server if enabled
+	if cfg.StatusServerEnabled {
+		statusHandler := status.NewStatusHandler(r)
+		go func() {
+			klog.Infof("Status server available at http://localhost%s", cfg.StatusServerAddr)
+			if err := status.StartStatusServer(cfg.StatusServerAddr, statusHandler); err != nil {
+				klog.Errorf("Status server failed: %v", err)
+			}
+		}()
+	}
+	
 	// Start the informer manager
 	klog.Info("Starting informer manager...")
 	if err := manager.Start(ctx); err != nil {
@@ -121,6 +156,9 @@ func main() {
 	}
 	
 	klog.Info("Search Collector AI is running. Press Ctrl+C to stop.")
+	if cfg.StatusServerEnabled {
+		klog.Infof("Status endpoint: http://localhost%s/status", cfg.StatusServerAddr)
+	}
 	
 	// Wait for shutdown signal
 	<-sigCh

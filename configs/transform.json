@@ -1,0 +1,233 @@
+{
+  "global": {
+    "defaultFields": [
+      "metadata.name",
+      "metadata.namespace",
+      "metadata.creationTimestamp",
+      "metadata.labels"
+    ],
+    "includeLabels": true,
+    "includeAnnotations": false,
+    "discoverRelationships": true
+  },
+  "resources": {
+    "pods": {
+      "additionalFields": [
+        "spec.nodeName",
+        "status.phase",
+        "status.podIP",
+        "status.hostIP",
+        "status.qosClass",
+        "spec.containers",
+        "status.containerStatuses"
+      ],
+      "customFields": [
+        {
+          "fieldName": "container_count",
+          "jsonPath": "spec.containers.length",
+          "type": "int"
+        },
+        {
+          "fieldName": "init_container_count",
+          "jsonPath": "spec.initContainers.length",
+          "type": "int"
+        },
+        {
+          "fieldName": "ready_condition",
+          "jsonPath": "status.conditions[?(@.type=='Ready')].status",
+          "type": "string"
+        },
+        {
+          "fieldName": "scheduled_condition",
+          "jsonPath": "status.conditions[?(@.type=='PodScheduled')].status",
+          "type": "string"
+        }
+      ],
+      "fieldMappings": {
+        "spec.nodeName": "node",
+        "status.phase": "pod_status",
+        "status.podIP": "pod_ip",
+        "status.hostIP": "host_ip"
+      }
+    },
+    "services": {
+      "additionalFields": [
+        "spec.type",
+        "spec.clusterIP",
+        "spec.ports",
+        "spec.selector",
+        "status.loadBalancer"
+      ],
+      "customFields": [
+        {
+          "fieldName": "port_count",
+          "jsonPath": "spec.ports.length",
+          "type": "int"
+        },
+        {
+          "fieldName": "has_selector",
+          "jsonPath": "spec.selector",
+          "type": "bool"
+        }
+      ],
+      "fieldMappings": {
+        "spec.type": "service_type",
+        "spec.clusterIP": "cluster_ip"
+      }
+    },
+    "deployments": {
+      "additionalFields": [
+        "spec.replicas",
+        "status.replicas",
+        "status.readyReplicas",
+        "status.updatedReplicas",
+        "status.availableReplicas",
+        "spec.strategy.type",
+        "spec.selector"
+      ],
+      "customFields": [
+        {
+          "fieldName": "deployment_ready",
+          "jsonPath": "status.readyReplicas",
+          "type": "bool",
+          "condition": {
+            "field": "status.readyReplicas",
+            "operator": "equals",
+            "value": "spec.replicas"
+          }
+        },
+        {
+          "fieldName": "scale_up",
+          "jsonPath": "status.replicas",
+          "type": "bool",
+          "condition": {
+            "field": "status.replicas",
+            "operator": ">",
+            "value": "spec.replicas"
+          }
+        }
+      ]
+    },
+    "nodes": {
+      "additionalFields": [
+        "status.nodeInfo.kubeletVersion",
+        "status.nodeInfo.osImage",
+        "status.nodeInfo.kernelVersion",
+        "status.nodeInfo.containerRuntimeVersion",
+        "status.capacity",
+        "status.allocatable",
+        "status.conditions",
+        "spec.taints"
+      ],
+      "customFields": [
+        {
+          "fieldName": "ready_condition",
+          "jsonPath": "status.conditions[?(@.type=='Ready')].status",
+          "type": "string"
+        },
+        {
+          "fieldName": "disk_pressure",
+          "jsonPath": "status.conditions[?(@.type=='DiskPressure')].status",
+          "type": "string"
+        },
+        {
+          "fieldName": "memory_pressure",
+          "jsonPath": "status.conditions[?(@.type=='MemoryPressure')].status",
+          "type": "string"
+        },
+        {
+          "fieldName": "pid_pressure",
+          "jsonPath": "status.conditions[?(@.type=='PIDPressure')].status",
+          "type": "string"
+        },
+        {
+          "fieldName": "taint_count",
+          "jsonPath": "spec.taints.length",
+          "type": "int"
+        }
+      ]
+    },
+    "configmaps": {
+      "additionalFields": [
+        "data"
+      ],
+      "customFields": [
+        {
+          "fieldName": "data_key_count",
+          "jsonPath": "data",
+          "type": "int"
+        }
+      ]
+    },
+    "secrets": {
+      "additionalFields": [
+        "type"
+      ],
+      "customFields": [
+        {
+          "fieldName": "data_key_count",
+          "jsonPath": "data",
+          "type": "int"
+        }
+      ],
+      "excludeFields": [
+        "data"
+      ]
+    },
+    "persistentvolumes": {
+      "additionalFields": [
+        "spec.capacity.storage",
+        "spec.accessModes",
+        "spec.persistentVolumeReclaimPolicy",
+        "spec.storageClassName",
+        "status.phase",
+        "spec.claimRef"
+      ],
+      "fieldMappings": {
+        "spec.capacity.storage": "capacity",
+        "spec.persistentVolumeReclaimPolicy": "reclaim_policy",
+        "spec.storageClassName": "storage_class"
+      }
+    },
+    "persistentvolumeclaims": {
+      "additionalFields": [
+        "spec.accessModes",
+        "spec.resources.requests.storage",
+        "spec.storageClassName",
+        "spec.volumeName",
+        "status.phase",
+        "status.capacity.storage"
+      ],
+      "fieldMappings": {
+        "spec.resources.requests.storage": "requested_storage",
+        "spec.storageClassName": "storage_class",
+        "spec.volumeName": "volume_name",
+        "status.capacity.storage": "actual_capacity"
+      }
+    },
+    "ingresses": {
+      "additionalFields": [
+        "spec.rules",
+        "spec.tls",
+        "status.loadBalancer"
+      ],
+      "customFields": [
+        {
+          "fieldName": "rule_count",
+          "jsonPath": "spec.rules.length",
+          "type": "int"
+        },
+        {
+          "fieldName": "tls_enabled",
+          "jsonPath": "spec.tls",
+          "type": "bool"
+        },
+        {
+          "fieldName": "host_count",
+          "jsonPath": "spec.rules[*].host.length",
+          "type": "int"
+        }
+      ]
+    }
+  }
+}

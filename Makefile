@@ -112,6 +112,13 @@ generate: ## Run go generate
 	@echo "Running go generate..."
 	go generate ./...
 
+.PHONY: config-template
+config-template: ## Generate default configuration template
+	@echo "Generating default configuration template..."
+	@mkdir -p configs
+	@echo "Default transform configuration already exists at configs/transform.json"
+	@echo "You can customize field extraction by editing this file"
+
 .PHONY: vendor
 vendor: ## Create vendor directory
 	@echo "Creating vendor directory..."

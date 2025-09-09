@@ -12,27 +12,38 @@ import (
 // Config holds the application configuration
 type Config struct {
 	// Kubernetes client configuration
-	KubeConfig    string `json:"kubeconfig,omitempty"`
-	InCluster     bool   `json:"inCluster"`
-	
+	KubeConfig string `json:"kubeconfig,omitempty"`
+	InCluster  bool   `json:"inCluster"`
+
 	// Resource discovery configuration
-	UseDiscovery     bool             `json:"useDiscovery"`     // Whether to use discovery to find all resources
-	Resources        []ResourceConfig `json:"resources"`        // Manually configured resources
-	DiscoveredOnly   bool             `json:"discoveredOnly"`   // If true, only use discovered resources
-	
+	UseDiscovery   bool             `json:"useDiscovery"`   // Whether to use discovery to find all resources
+	Resources      []ResourceConfig `json:"resources"`      // Manually configured resources
+	DiscoveredOnly bool             `json:"discoveredOnly"` // If true, only use discovered resources
+
 	// Informer configuration
 	BufferSize   int           `json:"bufferSize"`
 	ResyncPeriod time.Duration `json:"resyncPeriod"`
-	
+
 	// Transformer configuration
+	TransformerType       string   `json:"transformerType"`     // Type of transformer to use
+	TransformConfigFile   string   `json:"transformConfigFile"` // Path to transformer config file
 	ExtractFields         []string `json:"extractFields"`
 	DiscoverRelationships bool     `json:"discoverRelationships"`
 	IncludeLabels         bool     `json:"includeLabels"`
 	IncludeAnnotations    bool     `json:"includeAnnotations"`
-	
+
+	// Reconciler configuration
+	ReconcilerCleanupInterval   time.Duration `json:"reconcilerCleanupInterval"`
+	ReconcilerDeletedRetention  time.Duration `json:"reconcilerDeletedRetention"`
+	ReconcilerMemoryThresholdMB float64       `json:"reconcilerMemoryThresholdMB"`
+
 	// Search indexer configuration
 	IndexerURL string `json:"indexerURL"`
-	
+
+	// Status server configuration
+	StatusServerEnabled bool   `json:"statusServerEnabled"`
+	StatusServerAddr    string `json:"statusServerAddr"`
+
 	// Logging
 	LogLevel int `json:"logLevel"`
 }
@@ -64,10 +75,17 @@ func DefaultConfig() *Config {
 		DiscoveredOnly:        false, // Use both discovered and manual resources
 		BufferSize:            1000,
 		ResyncPeriod:          10 * time.Minute,
-		DiscoverRelationships: true,
-		IncludeLabels:         true,
-		IncludeAnnotations:    false,
-		LogLevel:              2,
+		TransformerType:             "configurable",           // Use configurable transformer by default
+		TransformConfigFile:         "configs/transform.json", // Default config file path
+		DiscoverRelationships:       true,
+		IncludeLabels:               true,
+		IncludeAnnotations:          false,
+		ReconcilerCleanupInterval:   10 * time.Minute,
+		ReconcilerDeletedRetention:  1 * time.Hour,
+		ReconcilerMemoryThresholdMB: 512.0,
+		StatusServerEnabled:         true,
+		StatusServerAddr:            ":8080",
+		LogLevel:                    2,
 		Resources: []ResourceConfig{
 			// Core resources - these will be supplemented by discovery
 			{Group: "", Version: "v1", Resource: "pods"},
@@ -78,18 +96,19 @@ func DefaultConfig() *Config {
 			{Group: "", Version: "v1", Resource: "persistentvolumeclaims"},
 			{Group: "", Version: "v1", Resource: "nodes"},
 			{Group: "", Version: "v1", Resource: "namespaces"},
-			
+
 			// Apps resources
 			{Group: "apps", Version: "v1", Resource: "deployments"},
 			{Group: "apps", Version: "v1", Resource: "replicasets"},
 			{Group: "apps", Version: "v1", Resource: "daemonsets"},
 			{Group: "apps", Version: "v1", Resource: "statefulsets"},
-			
+
 			// Extensions/Networking
 			{Group: "networking.k8s.io", Version: "v1", Resource: "ingresses"},
 			{Group: "networking.k8s.io", Version: "v1", Resource: "networkpolicies"},
 		},
 		ExtractFields: []string{
+			"metadata.uid",
 			"metadata.name",
 			"metadata.namespace",
 			"metadata.labels",
@@ -106,12 +125,12 @@ func (c *Config) GetKubernetesConfig() (*rest.Config, error) {
 		klog.Info("Using in-cluster configuration")
 		return rest.InClusterConfig()
 	}
-	
+
 	if c.KubeConfig != "" {
 		klog.Infof("Using kubeconfig from: %s", c.KubeConfig)
 		return clientcmd.BuildConfigFromFlags("", c.KubeConfig)
 	}
-	
+
 	klog.Info("Using default kubeconfig")
 	return clientcmd.NewNonInteractiveDeferredLoadingClientConfig(
 		clientcmd.NewDefaultClientConfigLoadingRules(),
