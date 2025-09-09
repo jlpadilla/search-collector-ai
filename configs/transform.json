@@ -1,6 +1,7 @@
 {
   "global": {
     "defaultFields": [
+      "metadata.uid",
       "metadata.name",
       "metadata.namespace",
       "metadata.creationTimestamp",
@@ -148,16 +149,8 @@
       ]
     },
     "configmaps": {
-      "additionalFields": [
-        "data"
-      ],
-      "customFields": [
-        {
-          "fieldName": "data_key_count",
-          "jsonPath": "data",
-          "type": "int"
-        }
-      ]
+      "additionalFields": [],
+      "customFields": []
     },
     "secrets": {
       "additionalFields": [
