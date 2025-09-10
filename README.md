@@ -47,7 +47,7 @@ The collector consists of several key components:
 ### Prerequisites
 - Go 1.19+
 - Access to a Kubernetes cluster
-- Search indexer service running (default: `http://localhost:3010/sync`)
+- Search indexer service running (default: `https://localhost:3010/sync`)
 
 ### Installation
 
@@ -72,8 +72,14 @@ The collector uses configuration files and environment variables:
 
 ```bash
 # Basic configuration via environment
-export INDEXER_URL="http://your-search-indexer:3010/sync"
+export INDEXER_URL="https://your-search-indexer:3010/sync"
 export INDEXER_API_KEY="your-api-key"
+
+# TLS configuration (optional)
+export TLS_INSECURE_SKIP_VERIFY="false"  # Set to true only for testing
+export TLS_CA_CERT_FILE="/path/to/ca.crt"
+export TLS_CLIENT_CERT_FILE="/path/to/client.crt"
+export TLS_CLIENT_KEY_FILE="/path/to/client.key"
 
 # Run with custom transformer config
 ./search-collector-ai --transformer-config=./configs/transform.json
@@ -118,12 +124,42 @@ The transformer supports extensive field extraction configuration:
 }
 ```
 
+### TLS/HTTPS Configuration
+
+The collector uses HTTPS by default for secure communication with the search indexer. You can configure TLS settings:
+
+#### Production Setup (Recommended)
+```bash
+export INDEXER_URL="https://your-search-indexer.company.com:3010/sync"
+export TLS_CA_CERT_FILE="/etc/ssl/certs/ca.crt"          # Custom CA certificate
+export TLS_CLIENT_CERT_FILE="/etc/ssl/certs/client.crt"  # Client certificate for mutual TLS
+export TLS_CLIENT_KEY_FILE="/etc/ssl/private/client.key" # Client private key
+export TLS_SERVER_NAME="search-indexer.company.com"     # Override server name for verification
+```
+
+#### Development/Testing Setup (Less Secure)
+```bash
+export INDEXER_URL="https://localhost:3010/sync"
+export TLS_INSECURE_SKIP_VERIFY="true"  # Skip certificate verification (NOT for production)
+```
+
+#### Security Notes
+- **Default**: TLS certificate verification is **enabled** for security
+- **Production**: Always use valid certificates and avoid `TLS_INSECURE_SKIP_VERIFY=true`
+- **Mutual TLS**: Configure client certificates if your indexer requires client authentication
+- **Custom CAs**: Use `TLS_CA_CERT_FILE` for private/internal certificate authorities
+
 ### Environment Variables
 
 | Variable | Description | Default |
 |----------|-------------|---------|
-| `INDEXER_URL` | Search indexer endpoint | `http://localhost:3010/sync` |
+| `INDEXER_URL` | Search indexer endpoint | `https://localhost:3010/sync` |
 | `INDEXER_API_KEY` | API key for indexer authentication | `` |
+| `TLS_INSECURE_SKIP_VERIFY` | Skip TLS certificate verification (insecure) | `false` |
+| `TLS_CA_CERT_FILE` | Path to custom CA certificate file | `` |
+| `TLS_CLIENT_CERT_FILE` | Path to client certificate file | `` |
+| `TLS_CLIENT_KEY_FILE` | Path to client private key file | `` |
+| `TLS_SERVER_NAME` | Server name for TLS verification | `` |
 | `SEND_INTERVAL` | How often to sync changes | `10s` |
 | `BATCH_SIZE` | Maximum resources per batch | `100` |
 | `MAX_RETRIES` | Maximum retry attempts | `3` |
@@ -198,6 +234,50 @@ GOOS=linux GOARCH=amd64 go build
 go build -ldflags "-X main.version=v1.0.0"
 ```
 
+### Troubleshooting
+
+#### Diagnostics Mode
+
+If you're experiencing issues, use the built-in diagnostics tool:
+
+```bash
+# Run comprehensive diagnostics
+./search-collector-ai -diagnose
+
+# This will test:
+# - Configuration validation
+# - Search indexer connectivity 
+# - TLS/HTTPS setup
+# - Actual sync event transmission
+```
+
+#### Common HTTP 404 Error
+
+If you see `Failed to process changes: HTTP 404`, run diagnostics for specific guidance:
+
+```bash
+./search-collector-ai -diagnose
+```
+
+The diagnostics will provide specific troubleshooting steps based on the error type.
+
+#### Debug Logging
+
+Enable verbose logging for detailed troubleshooting:
+
+```bash
+# Detailed HTTP request/response logging
+./search-collector-ai -v=4
+
+# This shows:
+# - TLS configuration details
+# - HTTP request URLs and payloads
+# - Detailed error responses
+# - Connectivity test results
+```
+
+See [TROUBLESHOOTING.md](TROUBLESHOOTING.md) for comprehensive troubleshooting guide.
+
 ### Code Structure
 
 ```
@@ -217,6 +297,16 @@ go build -ldflags "-X main.version=v1.0.0"
 ```
 
 ## Recent Improvements
+
+### HTTPS/TLS Support ✅
+- **Enhancement**: Upgraded from HTTP to HTTPS for secure communication with search indexer
+- **Features**:
+  - HTTPS by default with proper TLS certificate verification
+  - Support for custom CA certificates for private certificate authorities
+  - Mutual TLS authentication with client certificates
+  - Configurable TLS settings via environment variables
+  - Production-ready security with option to disable verification for development
+- **Security**: TLS certificate verification enabled by default, with clear warnings for insecure configurations
 
 ### UID Extraction Fix ✅
 - **Issue**: Resources without UIDs were causing converter failures

@@ -66,6 +66,16 @@ type SenderConfig struct {
 	Username string `json:"username,omitempty"`
 	Password string `json:"password,omitempty"`
 	
+	// TLS configuration
+	TLSInsecureSkipVerify bool   `json:"tlsInsecureSkipVerify,omitempty"` // Skip TLS certificate verification
+	TLSCACertFile         string `json:"tlsCACertFile,omitempty"`         // Path to CA certificate file
+	TLSClientCertFile     string `json:"tlsClientCertFile,omitempty"`     // Path to client certificate file
+	TLSClientKeyFile      string `json:"tlsClientKeyFile,omitempty"`      // Path to client private key file
+	TLSServerName         string `json:"tlsServerName,omitempty"`         // Server name for TLS verification
+	
+	// Search indexer specific headers
+	OverwriteState bool `json:"overwriteState,omitempty"` // Whether to overwrite existing state in the indexer
+	
 	// Batch processing
 	BatchSize      int           `json:"batchSize"`      // Maximum resources per batch
 	BatchTimeout   time.Duration `json:"batchTimeout"`   // Maximum time to wait for batch

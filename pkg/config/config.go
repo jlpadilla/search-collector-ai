@@ -38,17 +38,27 @@ type Config struct {
 	ReconcilerMemoryThresholdMB float64       `json:"reconcilerMemoryThresholdMB"`
 
 	// Search indexer configuration
-	IndexerURL            string        `json:"indexerURL"`
-	IndexerTimeout        time.Duration `json:"indexerTimeout"`
-	IndexerAPIKey         string        `json:"indexerAPIKey,omitempty"`
+	IndexerURL     string        `json:"indexerURL"`
+	IndexerTimeout time.Duration `json:"indexerTimeout"`
+	IndexerAPIKey  string        `json:"indexerAPIKey,omitempty"`
+
+	// TLS configuration for search indexer
+	TLSInsecureSkipVerify bool   `json:"tlsInsecureSkipVerify,omitempty"`
+	TLSCACertFile         string `json:"tlsCACertFile,omitempty"`
+	TLSClientCertFile     string `json:"tlsClientCertFile,omitempty"`
+	TLSClientKeyFile      string `json:"tlsClientKeyFile,omitempty"`
+	TLSServerName         string `json:"tlsServerName,omitempty"`
 	
+	// Search indexer specific configuration
+	OverwriteState bool `json:"overwriteState,omitempty"`
+
 	// Sender configuration
-	SenderBatchSize       int           `json:"senderBatchSize"`
-	SenderBatchTimeout    time.Duration `json:"senderBatchTimeout"`
-	SenderSendInterval    time.Duration `json:"senderSendInterval"`
-	SenderMaxRetries      int           `json:"senderMaxRetries"`
-	SenderRetryDelay      time.Duration `json:"senderRetryDelay"`
-	SenderMaxResourcesPerSync int       `json:"senderMaxResourcesPerSync"`
+	SenderBatchSize           int           `json:"senderBatchSize"`
+	SenderBatchTimeout        time.Duration `json:"senderBatchTimeout"`
+	SenderSendInterval        time.Duration `json:"senderSendInterval"`
+	SenderMaxRetries          int           `json:"senderMaxRetries"`
+	SenderRetryDelay          time.Duration `json:"senderRetryDelay"`
+	SenderMaxResourcesPerSync int           `json:"senderMaxResourcesPerSync"`
 
 	// Status server configuration
 	StatusServerEnabled bool   `json:"statusServerEnabled"`
@@ -80,11 +90,11 @@ func (rc *ResourceConfig) ToGVR() schema.GroupVersionResource {
 // DefaultConfig returns a default configuration
 func DefaultConfig() *Config {
 	return &Config{
-		InCluster:             false,
-		UseDiscovery:          true,  // Enable discovery by default
-		DiscoveredOnly:        false, // Use both discovered and manual resources
-		BufferSize:            1000,
-		ResyncPeriod:          10 * time.Minute,
+		InCluster:                   false,
+		UseDiscovery:                true,  // Enable discovery by default
+		DiscoveredOnly:              false, // Use both discovered and manual resources
+		BufferSize:                  1000,
+		ResyncPeriod:                10 * time.Minute,
 		TransformerType:             "configurable",           // Use configurable transformer by default
 		TransformConfigFile:         "configs/transform.json", // Default config file path
 		DiscoverRelationships:       true,
@@ -93,8 +103,9 @@ func DefaultConfig() *Config {
 		ReconcilerCleanupInterval:   10 * time.Minute,
 		ReconcilerDeletedRetention:  1 * time.Hour,
 		ReconcilerMemoryThresholdMB: 512.0,
-		IndexerURL:                  "http://localhost:3010/sync",
+		IndexerURL:                  "https://localhost:3010/aggregator/clusters/local-ai/sync",
 		IndexerTimeout:              30 * time.Second,
+		TLSInsecureSkipVerify:       true,
 		SenderBatchSize:             100,
 		SenderBatchTimeout:          5 * time.Second,
 		SenderSendInterval:          10 * time.Second,
