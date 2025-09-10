@@ -32,13 +32,37 @@ func (t *baseTransformer) Transform(event *informer.ResourceEvent) (*Transformed
 	// Extract basic metadata
 	meta := event.ObjectMeta
 	
+	// Extract fields using the field extractor
+	fields := t.fieldExtractor.Extract(event.Object)
+	if fields == nil {
+		fields = make(map[string]interface{})
+	}
+	
+	// Ensure UID is always present - this is critical for the search indexer
+	if meta.UID != "" {
+		fields["metadata.uid"] = string(meta.UID)
+	} else {
+		klog.Warningf("Resource %s has no UID in metadata", event.ResourceKey)
+	}
+	
+	// Ensure other critical metadata fields are present
+	if meta.Name != "" {
+		fields["metadata.name"] = meta.Name
+	}
+	if meta.Namespace != "" {
+		fields["metadata.namespace"] = meta.Namespace
+	}
+	if !meta.CreationTimestamp.IsZero() {
+		fields["metadata.creationTimestamp"] = meta.CreationTimestamp.Time
+	}
+	
 	transformed := &TransformedResource{
 		ResourceKey:  event.ResourceKey,
 		ResourceType: event.ResourceType,
 		APIVersion:   event.APIVersion,
 		Namespace:    meta.Namespace,
 		Name:         meta.Name,
-		Fields:       t.fieldExtractor.Extract(event.Object),
+		Fields:       fields,
 	}
 	
 	// Add labels if configured

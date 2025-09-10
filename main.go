@@ -14,6 +14,7 @@ import (
 	"github.com/jlpadilla/search-collector-ai/pkg/handler"
 	"github.com/jlpadilla/search-collector-ai/pkg/informer"
 	"github.com/jlpadilla/search-collector-ai/pkg/reconciler"
+	"github.com/jlpadilla/search-collector-ai/pkg/sender"
 	"github.com/jlpadilla/search-collector-ai/pkg/status"
 	"github.com/jlpadilla/search-collector-ai/pkg/transformer"
 	k8sdiscovery "k8s.io/client-go/discovery"
@@ -80,6 +81,29 @@ func main() {
 	}
 	defer r.Stop()
 	
+	// Create sender
+	senderConfig := &sender.SenderConfig{
+		IndexerURL:            cfg.IndexerURL,
+		IndexerTimeout:        cfg.IndexerTimeout,
+		APIKey:                cfg.IndexerAPIKey,
+		BatchSize:             cfg.SenderBatchSize,
+		BatchTimeout:          cfg.SenderBatchTimeout,
+		SendInterval:          cfg.SenderSendInterval,
+		MaxRetries:            cfg.SenderMaxRetries,
+		RetryDelay:            cfg.SenderRetryDelay,
+		RetryBackoff:          2.0,
+		MaxResourcesPerSync:   cfg.SenderMaxResourcesPerSync,
+		FailureThreshold:      5,
+		BackoffDuration:       5 * time.Minute,
+	}
+	s := sender.NewHTTPSender(senderConfig, r)
+	
+	// Start sender
+	if err := s.Start(); err != nil {
+		klog.Fatalf("Failed to start sender: %v", err)
+	}
+	defer s.Stop()
+	
 	// Create event handler
 	eventHandler := handler.NewTransformHandler(t, r)
 	
@@ -140,7 +164,7 @@ func main() {
 	
 	// Start status server if enabled
 	if cfg.StatusServerEnabled {
-		statusHandler := status.NewStatusHandler(r)
+		statusHandler := status.NewStatusHandler(r, s)
 		go func() {
 			klog.Infof("Status server available at http://localhost%s", cfg.StatusServerAddr)
 			if err := status.StartStatusServer(cfg.StatusServerAddr, statusHandler); err != nil {

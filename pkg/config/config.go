@@ -38,7 +38,17 @@ type Config struct {
 	ReconcilerMemoryThresholdMB float64       `json:"reconcilerMemoryThresholdMB"`
 
 	// Search indexer configuration
-	IndexerURL string `json:"indexerURL"`
+	IndexerURL            string        `json:"indexerURL"`
+	IndexerTimeout        time.Duration `json:"indexerTimeout"`
+	IndexerAPIKey         string        `json:"indexerAPIKey,omitempty"`
+	
+	// Sender configuration
+	SenderBatchSize       int           `json:"senderBatchSize"`
+	SenderBatchTimeout    time.Duration `json:"senderBatchTimeout"`
+	SenderSendInterval    time.Duration `json:"senderSendInterval"`
+	SenderMaxRetries      int           `json:"senderMaxRetries"`
+	SenderRetryDelay      time.Duration `json:"senderRetryDelay"`
+	SenderMaxResourcesPerSync int       `json:"senderMaxResourcesPerSync"`
 
 	// Status server configuration
 	StatusServerEnabled bool   `json:"statusServerEnabled"`
@@ -83,6 +93,14 @@ func DefaultConfig() *Config {
 		ReconcilerCleanupInterval:   10 * time.Minute,
 		ReconcilerDeletedRetention:  1 * time.Hour,
 		ReconcilerMemoryThresholdMB: 512.0,
+		IndexerURL:                  "http://localhost:3010/sync",
+		IndexerTimeout:              30 * time.Second,
+		SenderBatchSize:             100,
+		SenderBatchTimeout:          5 * time.Second,
+		SenderSendInterval:          10 * time.Second,
+		SenderMaxRetries:            3,
+		SenderRetryDelay:            1 * time.Second,
+		SenderMaxResourcesPerSync:   1000,
 		StatusServerEnabled:         true,
 		StatusServerAddr:            ":8080",
 		LogLevel:                    2,
