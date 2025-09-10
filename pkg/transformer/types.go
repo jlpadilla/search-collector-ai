@@ -69,4 +69,19 @@ type TransformConfig struct {
 	
 	// Whether to include annotations in output
 	IncludeAnnotations bool `json:"includeAnnotations"`
+	
+	// Field mapping configuration
+	FieldMapping FieldMappingConfig `json:"fieldMapping"`
+}
+
+// FieldMappingConfig configures how field names are transformed
+type FieldMappingConfig struct {
+	// Type of field mapping: "none", "metadata-prefix-removal", "custom"
+	Type string `json:"type"`
+	
+	// Custom mappings for "custom" type (fieldPath -> mappedName)
+	CustomMappings map[string]string `json:"customMappings,omitempty"`
+	
+	// Whether to enable metadata prefix removal (for backward compatibility)
+	EnableMetadataPrefixRemoval bool `json:"enableMetadataPrefixRemoval"`
 }

@@ -14,17 +14,48 @@ import (
 type baseTransformer struct {
 	config         *TransformConfig
 	fieldExtractor *FieldExtractor
+	fieldMapper    FieldMapper
 }
 
 // NewBaseTransformer creates a new base transformer
 func NewBaseTransformer(config *TransformConfig) Transformer {
+	// Create field mapper based on configuration
+	var fieldMapper FieldMapper
+	switch config.FieldMapping.Type {
+	case "metadata-prefix-removal":
+		fieldMapper = &MetadataPrefixMapper{}
+	case "custom":
+		fieldMapper = NewConfigurableFieldMapper(config.FieldMapping.CustomMappings)
+	case "none":
+		fallthrough
+	default:
+		fieldMapper = &NoOpFieldMapper{}
+	}
+	
+	// Handle backward compatibility for metadata prefix removal
+	if config.FieldMapping.EnableMetadataPrefixRemoval {
+		if config.FieldMapping.Type == "custom" {
+			// Chain custom mappings with metadata prefix removal
+			fieldMapper = NewChainedFieldMapper(
+				NewConfigurableFieldMapper(config.FieldMapping.CustomMappings),
+				&MetadataPrefixMapper{},
+			)
+		} else if config.FieldMapping.Type == "none" || config.FieldMapping.Type == "" {
+			fieldMapper = &MetadataPrefixMapper{}
+		}
+	}
+
 	return &baseTransformer{
 		config:         config,
 		fieldExtractor: NewFieldExtractor(config.ExtractFields),
+		fieldMapper:    fieldMapper,
 	}
 }
 
 func (t *baseTransformer) Transform(event *informer.ResourceEvent) (*TransformedResource, error) {
+	if event == nil {
+		return nil, fmt.Errorf("event is nil")
+	}
 	if event.Object == nil {
 		return nil, fmt.Errorf("event object is nil")
 	}
@@ -32,13 +63,17 @@ func (t *baseTransformer) Transform(event *informer.ResourceEvent) (*Transformed
 	// Extract basic metadata
 	meta := event.ObjectMeta
 	
+	// Extract fields and apply field mapping
+	extractedFields := t.fieldExtractor.Extract(event.Object)
+	mappedFields := t.fieldMapper.MapFields(extractedFields)
+	
 	transformed := &TransformedResource{
 		ResourceKey:  event.ResourceKey,
 		ResourceType: event.ResourceType,
 		APIVersion:   event.APIVersion,
 		Namespace:    meta.Namespace,
 		Name:         meta.Name,
-		Fields:       t.fieldExtractor.Extract(event.Object),
+		Fields:       mappedFields,
 	}
 	
 	// Add labels if configured

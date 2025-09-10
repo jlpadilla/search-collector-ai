@@ -41,9 +41,7 @@ func (fe *FieldExtractor) Extract(obj runtime.Object) map[string]interface{} {
 	for _, fieldPath := range fe.fields {
 		value := fe.extractFieldByPath(objValue, fieldPath)
 		if value != nil {
-			// Remove "metadata." prefix from field names for cleaner indexing
-			indexKey := fe.getIndexKey(fieldPath)
-			result[indexKey] = value
+			result[fieldPath] = value
 		}
 	}
 	
@@ -127,13 +125,4 @@ func parseInt(s string) (int, error) {
 		result = result*10 + int(ch-'0')
 	}
 	return result, nil
-}
-
-// getIndexKey converts field paths to index keys, removing "metadata." prefix for cleaner indexing
-func (fe *FieldExtractor) getIndexKey(fieldPath string) string {
-	// Remove "metadata." prefix from field names for cleaner indexing
-	if strings.HasPrefix(fieldPath, "metadata.") {
-		return strings.TrimPrefix(fieldPath, "metadata.")
-	}
-	return fieldPath
 }

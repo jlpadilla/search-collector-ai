@@ -57,6 +57,9 @@ func main() {
 		DiscoverRelationships: cfg.DiscoverRelationships,
 		IncludeLabels:         cfg.IncludeLabels,
 		IncludeAnnotations:    cfg.IncludeAnnotations,
+		FieldMapping: transformer.FieldMappingConfig{
+			Type: "none", // Default: no field mapping for backward compatibility
+		},
 	}
 	
 	// Create transformer using registry
