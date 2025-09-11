@@ -14,11 +14,11 @@ func (s *HTTPSender) convertToSyncEvents(resources []*reconciler.ResourceState) 
 	if len(resources) == 0 {
 		return nil, nil
 	}
-	
+
 	var syncEvents []*SyncEvent
 	currentEvent := &SyncEvent{}
 	currentResourceCount := 0
-	
+
 	for _, resourceState := range resources {
 		// Convert resource state to appropriate sync event components
 		if resourceState.IsDeleted {
@@ -39,13 +39,13 @@ func (s *HTTPSender) convertToSyncEvents(resources []*reconciler.ResourceState) 
 					currentEvent.UpdateResources = append(currentEvent.UpdateResources, *resource)
 				}
 				currentResourceCount++
-				
+
 				// Add relationships as edges
 				edges := s.convertRelationshipsToEdges(resourceState.TransformedResource)
 				currentEvent.AddEdges = append(currentEvent.AddEdges, edges...)
 			}
 		}
-		
+
 		// Check if we need to create a new sync event (batch size limit)
 		if currentResourceCount >= s.config.MaxResourcesPerSync {
 			syncEvents = append(syncEvents, currentEvent)
@@ -53,17 +53,17 @@ func (s *HTTPSender) convertToSyncEvents(resources []*reconciler.ResourceState) 
 			currentResourceCount = 0
 		}
 	}
-	
+
 	// Add the last event if it has any resources
 	if currentResourceCount > 0 {
 		syncEvents = append(syncEvents, currentEvent)
 	}
-	
+
 	// If no events were created, return an empty event
 	if len(syncEvents) == 0 {
 		syncEvents = append(syncEvents, &SyncEvent{})
 	}
-	
+
 	return syncEvents, nil
 }
 
@@ -73,32 +73,32 @@ func (s *HTTPSender) convertToResource(resourceState *reconciler.ResourceState) 
 		klog.V(4).Infof("Skipping resource %s: no transformed resource data", resourceState.ResourceKey)
 		return nil
 	}
-	
+
 	tr := resourceState.TransformedResource
-	
+
 	// Get UID from various sources
 	uid := s.extractUID(tr)
 	if uid == "" {
 		klog.Errorf("Resource %s has no UID and fallback generation failed, skipping", resourceState.ResourceKey)
 		return nil
 	}
-	
+
 	// Build resource string (typically namespace/name format)
 	resourceString := s.buildResourceString(tr)
-	
+
 	// Build properties map by combining fields, labels, and metadata
 	properties := s.buildProperties(tr)
-	
+
 	resource := &Resource{
 		Kind:           s.normalizeKind(tr.ResourceType),
 		UID:            uid,
 		ResourceString: resourceString,
 		Properties:     properties,
 	}
-	
+
 	klog.V(4).Infof("Converted resource %s (kind: %s, uid: %s) with %d properties",
 		resourceState.ResourceKey, resource.Kind, resource.UID, len(resource.Properties))
-	
+
 	return resource
 }
 
@@ -108,22 +108,22 @@ func (s *HTTPSender) convertToDeleteEvent(resourceState *reconciler.ResourceStat
 		klog.V(4).Infof("Skipping deleted resource %s: no transformed resource data", resourceState.ResourceKey)
 		return nil
 	}
-	
+
 	tr := resourceState.TransformedResource
 	uid := s.extractUID(tr)
 	if uid == "" {
 		klog.Errorf("Deleted resource %s has no UID and fallback generation failed, skipping", resourceState.ResourceKey)
 		return nil
 	}
-	
+
 	deleteEvent := &DeleteResourceEvent{
 		UID:  uid,
 		Kind: s.normalizeKind(tr.ResourceType),
 	}
-	
+
 	klog.V(4).Infof("Converted delete event for resource %s (kind: %s, uid: %s)",
 		resourceState.ResourceKey, deleteEvent.Kind, deleteEvent.UID)
-	
+
 	return deleteEvent
 }
 
@@ -132,22 +132,22 @@ func (s *HTTPSender) convertRelationshipsToEdges(tr *transformer.TransformedReso
 	if tr == nil || len(tr.Relationships) == 0 {
 		return nil
 	}
-	
+
 	var edges []Edge
 	sourceUID := s.extractUID(tr)
 	if sourceUID == "" {
 		return nil
 	}
-	
+
 	sourceKind := s.normalizeKind(tr.ResourceType)
-	
+
 	for _, rel := range tr.Relationships {
 		// Extract target UID from relationship
 		targetUID := s.extractTargetUID(rel)
 		if targetUID == "" {
 			continue
 		}
-		
+
 		edge := Edge{
 			SourceUID:  sourceUID,
 			DestUID:    targetUID,
@@ -155,10 +155,10 @@ func (s *HTTPSender) convertRelationshipsToEdges(tr *transformer.TransformedReso
 			SourceKind: sourceKind,
 			DestKind:   s.normalizeKind(rel.TargetType),
 		}
-		
+
 		edges = append(edges, edge)
 	}
-	
+
 	return edges
 }
 
@@ -177,20 +177,20 @@ func (s *HTTPSender) extractUID(tr *transformer.TransformedResource) string {
 			}
 		}
 	}
-	
+
 	// Generate a fallback UID if none exists - this should rarely happen with the improved transformer
 	// but provides a safety net to prevent the converter from failing
 	if tr.ResourceKey != "" {
 		klog.V(4).Infof("Generating fallback UID for resource %s (resourceKey: %s)", tr.Name, tr.ResourceKey)
 		return fmt.Sprintf("fallback-%s-%s", tr.ResourceType, tr.ResourceKey)
 	}
-	
+
 	// Last resort: use resource type and name
 	if tr.Name != "" {
 		klog.V(4).Infof("Generating last-resort UID for resource %s", tr.Name)
 		return fmt.Sprintf("lastresort-%s-%s", tr.ResourceType, tr.Name)
 	}
-	
+
 	return ""
 }
 
@@ -221,7 +221,7 @@ func (s *HTTPSender) buildResourceString(tr *transformer.TransformedResource) st
 // buildProperties builds the properties map from transformed resource data
 func (s *HTTPSender) buildProperties(tr *transformer.TransformedResource) map[string]interface{} {
 	properties := make(map[string]interface{})
-	
+
 	// Add basic metadata
 	if tr.Name != "" {
 		properties["name"] = tr.Name
@@ -233,12 +233,12 @@ func (s *HTTPSender) buildProperties(tr *transformer.TransformedResource) map[st
 		properties["apiVersion"] = tr.APIVersion
 	}
 	if tr.CreatedAt != "" {
-		properties["createdAt"] = tr.CreatedAt
+		properties["created"] = tr.CreatedAt
 	}
 	if tr.UpdatedAt != "" {
 		properties["updatedAt"] = tr.UpdatedAt
 	}
-	
+
 	// Add all fields from the transformer
 	if tr.Fields != nil {
 		for key, value := range tr.Fields {
@@ -247,7 +247,7 @@ func (s *HTTPSender) buildProperties(tr *transformer.TransformedResource) map[st
 			properties[flatKey] = value
 		}
 	}
-	
+
 	// Add labels with a prefix to avoid conflicts
 	if tr.Labels != nil && len(tr.Labels) > 0 {
 		for key, value := range tr.Labels {
@@ -256,7 +256,7 @@ func (s *HTTPSender) buildProperties(tr *transformer.TransformedResource) map[st
 		// Also add all labels as a single field for search
 		properties["labels"] = tr.Labels
 	}
-	
+
 	// Add annotations with a prefix (if they exist and are not too large)
 	if tr.Annotations != nil && len(tr.Annotations) > 0 {
 		// Only include smaller annotations to avoid bloating the index
@@ -270,11 +270,11 @@ func (s *HTTPSender) buildProperties(tr *transformer.TransformedResource) map[st
 			properties["annotations"] = filteredAnnotations
 		}
 	}
-	
+
 	// Add relationship count for search/filtering
 	if len(tr.Relationships) > 0 {
 		properties["relationship_count"] = len(tr.Relationships)
-		
+
 		// Add relationship types for search
 		relTypes := make([]string, 0, len(tr.Relationships))
 		for _, rel := range tr.Relationships {
@@ -282,7 +282,7 @@ func (s *HTTPSender) buildProperties(tr *transformer.TransformedResource) map[st
 		}
 		properties["relationship_types"] = relTypes
 	}
-	
+
 	return properties
 }
 
@@ -290,32 +290,32 @@ func (s *HTTPSender) buildProperties(tr *transformer.TransformedResource) map[st
 func (s *HTTPSender) normalizeKind(resourceType string) string {
 	// Convert resource type (plural, lowercase) to Kind (singular, PascalCase)
 	kindMap := map[string]string{
-		"pods":                     "Pod",
-		"services":                 "Service",
-		"deployments":              "Deployment",
-		"replicasets":              "ReplicaSet",
-		"daemonsets":               "DaemonSet",
-		"statefulsets":             "StatefulSet",
-		"configmaps":               "ConfigMap",
-		"secrets":                  "Secret",
-		"persistentvolumes":        "PersistentVolume",
-		"persistentvolumeclaims":   "PersistentVolumeClaim",
-		"nodes":                    "Node",
-		"namespaces":               "Namespace",
-		"ingresses":                "Ingress",
-		"networkpolicies":          "NetworkPolicy",
+		"pods":                      "Pod",
+		"services":                  "Service",
+		"deployments":               "Deployment",
+		"replicasets":               "ReplicaSet",
+		"daemonsets":                "DaemonSet",
+		"statefulsets":              "StatefulSet",
+		"configmaps":                "ConfigMap",
+		"secrets":                   "Secret",
+		"persistentvolumes":         "PersistentVolume",
+		"persistentvolumeclaims":    "PersistentVolumeClaim",
+		"nodes":                     "Node",
+		"namespaces":                "Namespace",
+		"ingresses":                 "Ingress",
+		"networkpolicies":           "NetworkPolicy",
 		"customresourcedefinitions": "CustomResourceDefinition",
-		"roles":                    "Role",
-		"rolebindings":             "RoleBinding",
-		"clusterroles":             "ClusterRole",
-		"clusterrolebindings":      "ClusterRoleBinding",
-		"serviceaccounts":          "ServiceAccount",
+		"roles":                     "Role",
+		"rolebindings":              "RoleBinding",
+		"clusterroles":              "ClusterRole",
+		"clusterrolebindings":       "ClusterRoleBinding",
+		"serviceaccounts":           "ServiceAccount",
 	}
-	
+
 	if kind, exists := kindMap[resourceType]; exists {
 		return kind
 	}
-	
+
 	// For unknown types, try to convert to PascalCase
 	if resourceType != "" {
 		// Remove 's' from the end if it exists (simple pluralization)
@@ -325,6 +325,6 @@ func (s *HTTPSender) normalizeKind(resourceType string) string {
 			return strings.ToUpper(singular[:1]) + singular[1:]
 		}
 	}
-	
+
 	return resourceType
 }

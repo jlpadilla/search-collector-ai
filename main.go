@@ -61,7 +61,6 @@ func main() {
 	transformConfig := &transformer.TransformConfig{
 		TransformerType:       cfg.TransformerType,
 		ConfigFile:            cfg.TransformConfigFile,
-		ExtractFields:         cfg.ExtractFields,
 		DiscoverRelationships: cfg.DiscoverRelationships,
 		IncludeLabels:         cfg.IncludeLabels,
 		IncludeAnnotations:    cfg.IncludeAnnotations,

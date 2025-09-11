@@ -1,6 +1,8 @@
 {
   "global": {
     "defaultFields": [
+      "kind",
+      "apiVersion",
       "metadata.uid",
       "metadata.name",
       "metadata.namespace",
@@ -9,7 +11,11 @@
     ],
     "includeLabels": true,
     "includeAnnotations": false,
-    "discoverRelationships": true
+    "discoverRelationships": true,
+    "fieldMapping": {
+      "type": "metadata-prefix-removal",
+      "enableMetadataPrefixRemoval": true
+    }
   },
   "resources": {
     "pods": {

@@ -35,6 +35,17 @@ func (m *MetadataPrefixMapper) MapFields(fields map[string]interface{}) map[stri
 	result := make(map[string]interface{})
 	for fieldPath, value := range fields {
 		mappedName := m.MapFieldName(fieldPath)
+		
+		// Special handling for apiVersion field - split into apigroup and apiversion
+		if (fieldPath == "apiVersion" || fieldPath == "TypeMeta.APIVersion") && value != nil {
+			if apiVersionStr, ok := value.(string); ok {
+				apiGroup, apiVersion := splitAPIVersion(apiVersionStr)
+				result["apigroup"] = apiGroup
+				result["apiversion"] = apiVersion
+				continue
+			}
+		}
+		
 		result[mappedName] = value
 	}
 	
@@ -109,4 +120,27 @@ func (m *ChainedFieldMapper) MapFieldName(fieldPath string) string {
 		result = mapper.MapFieldName(result)
 	}
 	return result
+}
+
+// splitAPIVersion splits a Kubernetes apiVersion into group and version components
+// Examples:
+//   - "v1" -> ("", "v1") for core resources
+//   - "apps/v1" -> ("apps", "v1") for apps group
+//   - "networking.k8s.io/v1" -> ("networking.k8s.io", "v1") for networking group
+func splitAPIVersion(apiVersion string) (group, version string) {
+	if apiVersion == "" {
+		return "", ""
+	}
+	
+	parts := strings.Split(apiVersion, "/")
+	if len(parts) == 1 {
+		// Core API resources like "v1"
+		return "", parts[0]
+	} else if len(parts) == 2 {
+		// Group API resources like "apps/v1"
+		return parts[0], parts[1]
+	}
+	
+	// Fallback for unexpected format
+	return "", apiVersion
 }
