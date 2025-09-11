@@ -1,6 +1,7 @@
 {
   "global": {
     "defaultFields": [
+      "kind",
       "metadata.uid",
       "metadata.name",
       "metadata.namespace",
