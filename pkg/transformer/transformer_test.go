@@ -17,6 +17,9 @@ func TestTransformerUIDExtraction(t *testing.T) {
 		IncludeLabels:         true,
 		IncludeAnnotations:    false,
 		DiscoverRelationships: false,
+		FieldMapping: FieldMappingConfig{
+			Type: "none", // No field mapping, preserve raw values
+		},
 	}
 
 	transformer := NewBaseTransformer(config)
@@ -72,13 +75,13 @@ func TestTransformerUIDExtraction(t *testing.T) {
 		t.Fatal("metadata.uid not found in fields")
 	}
 
-	uidStr, ok := uid.(string)
+	uidValue, ok := uid.(types.UID)
 	if !ok {
-		t.Fatalf("UID is not a string: %T", uid)
+		t.Fatalf("UID is not types.UID: %T", uid)
 	}
 
-	if uidStr != "test-uid-12345" {
-		t.Fatalf("Expected UID 'test-uid-12345', got '%s'", uidStr)
+	if string(uidValue) != "test-uid-12345" {
+		t.Fatalf("Expected UID 'test-uid-12345', got '%s'", string(uidValue))
 	}
 
 	// Verify other fields
@@ -98,7 +101,7 @@ func TestTransformerUIDExtraction(t *testing.T) {
 		t.Fatalf("Expected namespace 'default', got '%s'", namespace)
 	}
 
-	t.Logf("UID extraction test passed: UID=%s", uidStr)
+	t.Logf("UID extraction test passed: UID=%s", string(uidValue))
 }
 
 func TestTransformerWithMissingUID(t *testing.T) {
@@ -108,6 +111,9 @@ func TestTransformerWithMissingUID(t *testing.T) {
 		IncludeLabels:         false,
 		IncludeAnnotations:    false,
 		DiscoverRelationships: false,
+		FieldMapping: FieldMappingConfig{
+			Type: "none", // No field mapping, preserve raw values
+		},
 	}
 
 	transformer := NewBaseTransformer(config)
