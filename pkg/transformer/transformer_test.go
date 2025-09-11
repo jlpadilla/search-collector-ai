@@ -6,6 +6,7 @@ import (
 
 	"github.com/jlpadilla/search-collector-ai/pkg/informer"
 	"k8s.io/api/core/v1"
+	appsv1 "k8s.io/api/apps/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 )
@@ -154,4 +155,86 @@ func TestTransformerWithMissingUID(t *testing.T) {
 
 	// The transformer should warn about missing UID but not fail
 	t.Logf("Transform completed for resource without UID: %+v", transformed.Fields)
+}
+
+func TestTransformerAPIVersionSplitting(t *testing.T) {
+	// Create a test transformer config with apiVersion splitting
+	config := &TransformConfig{
+		ExtractFields:         []string{"TypeMeta.APIVersion", "metadata.name", "metadata.namespace", "TypeMeta.Kind"},
+		IncludeLabels:         false,
+		IncludeAnnotations:    false,
+		DiscoverRelationships: false,
+		FieldMapping: FieldMappingConfig{
+			Type: "metadata-prefix-removal", // Use metadata prefix mapper for apiVersion splitting
+		},
+	}
+
+	transformer := NewBaseTransformer(config)
+
+	// Create a test deployment with grouped API version
+	deployment := &appsv1.Deployment{
+		TypeMeta: metav1.TypeMeta{
+			APIVersion: "apps/v1",
+			Kind:       "Deployment",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-deployment",
+			Namespace: "default",
+		},
+	}
+
+	// Create a resource event
+	event := &informer.ResourceEvent{
+		Type:         informer.EventTypeAdded,
+		Object:       deployment,
+		ObjectMeta:   deployment.ObjectMeta,
+		ResourceKey:  "default/test-deployment",
+		ResourceType: "deployments",
+		APIVersion:   "apps/v1",
+	}
+
+	// Transform the resource
+	transformed, err := transformer.Transform(event)
+	if err != nil {
+		t.Fatalf("Transform failed: %v", err)
+	}
+
+	// Verify apiVersion is split correctly
+	if transformed.Fields == nil {
+		t.Fatal("Fields map is nil")
+	}
+
+	// Check for apigroup
+	apiGroup, exists := transformed.Fields["apigroup"]
+	if !exists {
+		t.Fatal("apigroup not found in fields")
+	}
+	if apiGroup != "apps" {
+		t.Fatalf("Expected apigroup 'apps', got '%s'", apiGroup)
+	}
+
+	// Check for apiversion
+	apiVersion, exists := transformed.Fields["apiversion"]
+	if !exists {
+		t.Fatal("apiversion not found in fields")
+	}
+	if apiVersion != "v1" {
+		t.Fatalf("Expected apiversion 'v1', got '%s'", apiVersion)
+	}
+
+	// Check that Kind is properly mapped
+	kind, exists := transformed.Fields["kind"]
+	if !exists {
+		t.Fatal("kind not found in fields")
+	}
+	if kind != "Deployment" {
+		t.Fatalf("Expected kind 'Deployment', got '%s'", kind)
+	}
+
+	// Verify original apiVersion field is not present (replaced by split fields)
+	if _, exists := transformed.Fields["apiVersion"]; exists {
+		t.Error("Original apiVersion field should not be present after splitting")
+	}
+
+	t.Logf("API version splitting test passed: apigroup=%s, apiversion=%s, kind=%s", apiGroup, apiVersion, kind)
 }

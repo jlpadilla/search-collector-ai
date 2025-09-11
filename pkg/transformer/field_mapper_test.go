@@ -78,6 +78,7 @@ func TestMetadataPrefixMapper(t *testing.T) {
 		"metadata.name":     "test-name",
 		"metadata.namespace": "test-ns",
 		"TypeMeta.Kind":     "Pod",
+		"apiVersion":        "apps/v1",
 		"spec.replicas":     3,
 		"status.phase":      "Running",
 	}
@@ -87,6 +88,8 @@ func TestMetadataPrefixMapper(t *testing.T) {
 		"name":          "test-name",
 		"namespace":     "test-ns",
 		"kind":          "Pod",
+		"apigroup":      "apps",
+		"apiversion":    "v1",
 		"spec.replicas": 3,
 		"status.phase":  "Running",
 	}
@@ -247,5 +250,81 @@ func TestFieldMapperEdgeCases(t *testing.T) {
 	result = mapper.MapFields(complexFields)
 	if !reflect.DeepEqual(result, expectedComplex) {
 		t.Errorf("MapFields with complex values result mismatch.\nExpected: %+v\nActual: %+v", expectedComplex, result)
+	}
+}
+
+func TestSplitAPIVersion(t *testing.T) {
+	testCases := []struct {
+		input       string
+		expectedGroup string
+		expectedVersion string
+	}{
+		{"v1", "", "v1"},                              // Core API
+		{"apps/v1", "apps", "v1"},                     // Apps group
+		{"networking.k8s.io/v1", "networking.k8s.io", "v1"}, // Networking group
+		{"", "", ""},                                  // Empty string
+		{"invalid", "", "invalid"},                    // Fallback for invalid format
+	}
+	
+	for _, tc := range testCases {
+		group, version := splitAPIVersion(tc.input)
+		if group != tc.expectedGroup || version != tc.expectedVersion {
+			t.Errorf("splitAPIVersion(%s) = (%s, %s), expected (%s, %s)", 
+				tc.input, group, version, tc.expectedGroup, tc.expectedVersion)
+		}
+	}
+}
+
+func TestMetadataPrefixMapperAPIVersionSplitting(t *testing.T) {
+	mapper := &MetadataPrefixMapper{}
+	
+	// Test with core API version
+	fields := map[string]interface{}{
+		"apiVersion": "v1",
+		"metadata.name": "test-pod",
+	}
+	
+	expected := map[string]interface{}{
+		"apigroup": "",
+		"apiversion": "v1",
+		"name": "test-pod",
+	}
+	
+	result := mapper.MapFields(fields)
+	if !reflect.DeepEqual(result, expected) {
+		t.Errorf("Core API version splitting failed.\nExpected: %+v\nActual: %+v", expected, result)
+	}
+	
+	// Test with grouped API version
+	fields = map[string]interface{}{
+		"apiVersion": "networking.k8s.io/v1",
+		"metadata.name": "test-ingress",
+	}
+	
+	expected = map[string]interface{}{
+		"apigroup": "networking.k8s.io",
+		"apiversion": "v1",
+		"name": "test-ingress",
+	}
+	
+	result = mapper.MapFields(fields)
+	if !reflect.DeepEqual(result, expected) {
+		t.Errorf("Grouped API version splitting failed.\nExpected: %+v\nActual: %+v", expected, result)
+	}
+	
+	// Test with nil apiVersion (should skip splitting)
+	fields = map[string]interface{}{
+		"apiVersion": nil,
+		"metadata.name": "test-resource",
+	}
+	
+	expected = map[string]interface{}{
+		"apiVersion": nil,
+		"name": "test-resource",
+	}
+	
+	result = mapper.MapFields(fields)
+	if !reflect.DeepEqual(result, expected) {
+		t.Errorf("Nil API version handling failed.\nExpected: %+v\nActual: %+v", expected, result)
 	}
 }

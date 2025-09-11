@@ -25,12 +25,11 @@ type Config struct {
 	ResyncPeriod time.Duration `json:"resyncPeriod"`
 
 	// Transformer configuration
-	TransformerType       string   `json:"transformerType"`     // Type of transformer to use
-	TransformConfigFile   string   `json:"transformConfigFile"` // Path to transformer config file
-	ExtractFields         []string `json:"extractFields"`
-	DiscoverRelationships bool     `json:"discoverRelationships"`
-	IncludeLabels         bool     `json:"includeLabels"`
-	IncludeAnnotations    bool     `json:"includeAnnotations"`
+	TransformerType       string `json:"transformerType"`     // Type of transformer to use
+	TransformConfigFile   string `json:"transformConfigFile"` // Path to transformer config file
+	DiscoverRelationships bool   `json:"discoverRelationships"`
+	IncludeLabels         bool   `json:"includeLabels"`
+	IncludeAnnotations    bool   `json:"includeAnnotations"`
 
 	// Reconciler configuration
 	ReconcilerCleanupInterval   time.Duration `json:"reconcilerCleanupInterval"`
@@ -48,7 +47,7 @@ type Config struct {
 	TLSClientCertFile     string `json:"tlsClientCertFile,omitempty"`
 	TLSClientKeyFile      string `json:"tlsClientKeyFile,omitempty"`
 	TLSServerName         string `json:"tlsServerName,omitempty"`
-	
+
 	// Search indexer specific configuration
 	OverwriteState bool `json:"overwriteState,omitempty"`
 
@@ -135,16 +134,6 @@ func DefaultConfig() *Config {
 			// Extensions/Networking
 			{Group: "networking.k8s.io", Version: "v1", Resource: "ingresses"},
 			{Group: "networking.k8s.io", Version: "v1", Resource: "networkpolicies"},
-		},
-		ExtractFields: []string{
-			"TypeMeta.Kind",
-			"metadata.uid",
-			"metadata.name",
-			"metadata.namespace",
-			"metadata.labels",
-			"spec.selector",
-			"status.phase",
-			"status.conditions",
 		},
 	}
 }
