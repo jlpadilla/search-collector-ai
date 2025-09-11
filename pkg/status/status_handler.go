@@ -6,32 +6,36 @@ import (
 	"time"
 
 	"github.com/jlpadilla/search-collector-ai/pkg/reconciler"
+	"github.com/jlpadilla/search-collector-ai/pkg/sender"
 	"k8s.io/klog/v2"
 )
 
 // StatusHandler provides HTTP endpoints for status and statistics
 type StatusHandler struct {
 	reconciler reconciler.Reconciler
+	sender     sender.Sender
 	startTime  time.Time
 }
 
 // NewStatusHandler creates a new status handler
-func NewStatusHandler(r reconciler.Reconciler) *StatusHandler {
+func NewStatusHandler(r reconciler.Reconciler, s sender.Sender) *StatusHandler {
 	return &StatusHandler{
 		reconciler: r,
+		sender:     s,
 		startTime:  time.Now(),
 	}
 }
 
 // StatusResponse represents the overall system status
 type StatusResponse struct {
-	Status        string                    `json:"status"`
-	Uptime        string                    `json:"uptime"`
-	StartTime     time.Time                 `json:"startTime"`
+	Status        string                      `json:"status"`
+	Uptime        string                      `json:"uptime"`
+	StartTime     time.Time                   `json:"startTime"`
 	Reconciler    *reconciler.ReconcilerStats `json:"reconciler"`
-	Version       string                    `json:"version,omitempty"`
-	BuildDate     string                    `json:"buildDate,omitempty"`
-	CommitHash    string                    `json:"commitHash,omitempty"`
+	Sender        *sender.SenderStats         `json:"sender"`
+	Version       string                      `json:"version,omitempty"`
+	BuildDate     string                      `json:"buildDate,omitempty"`
+	CommitHash    string                      `json:"commitHash,omitempty"`
 }
 
 // HealthHandler returns a simple health check
@@ -54,6 +58,12 @@ func (h *StatusHandler) StatusHandler(w http.ResponseWriter, r *http.Request) {
 	// Get reconciler stats
 	reconcilerStats := h.reconciler.GetStats()
 	
+	// Get sender stats
+	var senderStats *sender.SenderStats
+	if h.sender != nil {
+		senderStats = h.sender.GetStats()
+	}
+	
 	uptime := time.Since(h.startTime)
 	
 	response := &StatusResponse{
@@ -61,6 +71,7 @@ func (h *StatusHandler) StatusHandler(w http.ResponseWriter, r *http.Request) {
 		Uptime:     uptime.String(),
 		StartTime:  h.startTime,
 		Reconciler: reconcilerStats,
+		Sender:     senderStats,
 	}
 	
 	w.WriteHeader(http.StatusOK)
@@ -105,6 +116,24 @@ func (h *StatusHandler) ResourcesHandler(w http.ResponseWriter, r *http.Request)
 	}
 }
 
+// SenderStatsHandler returns detailed sender statistics
+func (h *StatusHandler) SenderStatsHandler(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	
+	if h.sender == nil {
+		http.Error(w, "Sender not configured", http.StatusServiceUnavailable)
+		return
+	}
+	
+	stats := h.sender.GetStats()
+	
+	w.WriteHeader(http.StatusOK)
+	if err := json.NewEncoder(w).Encode(stats); err != nil {
+		klog.Errorf("Failed to encode sender stats: %v", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+	}
+}
+
 // StartStatusServer starts an HTTP server for status endpoints
 func StartStatusServer(addr string, handler *StatusHandler) error {
 	mux := http.NewServeMux()
@@ -114,6 +143,7 @@ func StartStatusServer(addr string, handler *StatusHandler) error {
 	mux.HandleFunc("/status", handler.StatusHandler)
 	mux.HandleFunc("/reconciler/stats", handler.ReconcilerStatsHandler)
 	mux.HandleFunc("/reconciler/resources", handler.ResourcesHandler)
+	mux.HandleFunc("/sender/stats", handler.SenderStatsHandler)
 	
 	// Add a root handler that shows available endpoints
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
@@ -128,6 +158,7 @@ func StartStatusServer(addr string, handler *StatusHandler) error {
 			"/status":               "Overall system status and statistics",
 			"/reconciler/stats":     "Detailed reconciler statistics",
 			"/reconciler/resources": "List of managed resources (supports ?type=<type> and ?changed=true)",
+			"/sender/stats":         "Detailed sender statistics and sync status",
 		}
 		json.NewEncoder(w).Encode(map[string]interface{}{
 			"service":   "Search Collector AI",

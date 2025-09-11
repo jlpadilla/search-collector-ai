@@ -76,7 +76,7 @@ func (h *TransformHandler) OnUpdate(oldEvent, newEvent *informer.ResourceEvent) 
 	for k := range transformed.Fields {
 		keys = append(keys, k)
 	}
-	klog.Infof("Transformed UPDATE event for %s: extracted %d fields. %v", newEvent.ResourceKey, len(transformed.Fields), keys)
+	// klog.Infof("Transformed UPDATE event for %s: extracted %d fields. %v", newEvent.ResourceKey, len(transformed.Fields), keys)
 
 	// Send to reconciler
 	change := &reconciler.StateChange{
