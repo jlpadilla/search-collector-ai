@@ -57,6 +57,7 @@ func TestMetadataPrefixMapper(t *testing.T) {
 		{"metadata.namespace", "namespace"},
 		{"metadata.creationTimestamp", "creationTimestamp"},
 		{"metadata.labels", "labels"},
+		{"TypeMeta.Kind", "kind"},
 		{"spec.containers", "spec.containers"},
 		{"status.phase", "status.phase"},
 		{"", ""},
@@ -76,6 +77,7 @@ func TestMetadataPrefixMapper(t *testing.T) {
 		"metadata.uid":      "test-uid",
 		"metadata.name":     "test-name",
 		"metadata.namespace": "test-ns",
+		"TypeMeta.Kind":     "Pod",
 		"spec.replicas":     3,
 		"status.phase":      "Running",
 	}
@@ -84,6 +86,7 @@ func TestMetadataPrefixMapper(t *testing.T) {
 		"uid":           "test-uid",
 		"name":          "test-name",
 		"namespace":     "test-ns",
+		"kind":          "Pod",
 		"spec.replicas": 3,
 		"status.phase":  "Running",
 	}

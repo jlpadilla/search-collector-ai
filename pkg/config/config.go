@@ -137,6 +137,7 @@ func DefaultConfig() *Config {
 			{Group: "networking.k8s.io", Version: "v1", Resource: "networkpolicies"},
 		},
 		ExtractFields: []string{
+			"TypeMeta.Kind",
 			"metadata.uid",
 			"metadata.name",
 			"metadata.namespace",

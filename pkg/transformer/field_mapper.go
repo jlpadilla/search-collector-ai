@@ -45,6 +45,10 @@ func (m *MetadataPrefixMapper) MapFieldName(fieldPath string) string {
 	if strings.HasPrefix(fieldPath, "metadata.") {
 		return strings.TrimPrefix(fieldPath, "metadata.")
 	}
+	// Map TypeMeta.Kind to just "kind" for cleaner indexing
+	if fieldPath == "TypeMeta.Kind" {
+		return "kind"
+	}
 	return fieldPath
 }
 
