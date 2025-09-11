@@ -63,10 +63,10 @@ func (t *baseTransformer) Transform(event *informer.ResourceEvent) (*Transformed
 	// Extract basic metadata
 	meta := event.ObjectMeta
 	
+
 	// Extract fields and apply field mapping
 	extractedFields := t.fieldExtractor.Extract(event.Object)
-	mappedFields := t.fieldMapper.MapFields(extractedFields)
-	
+	mappedFields := t.fieldMapper.MapFields(extractedFields)	
 	transformed := &TransformedResource{
 		ResourceKey:  event.ResourceKey,
 		ResourceType: event.ResourceType,
