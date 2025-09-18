@@ -47,6 +47,21 @@ This is similar to the client-go informer, but optimized to reduce memory. It mu
 Receives event data from the informer and extracts the data we want to send to the search index. 
 Discovers relationships to other resources.
 
+#### Field Mapping and Processing
+The transformer includes sophisticated field mapping capabilities:
+
+- **Field Extraction**: Extracts specific fields from Kubernetes resources using dot notation paths (e.g., `TypeMeta.Kind`, `metadata.name`)
+- **Field Mapping**: Transforms field names for better search indexing:
+  - `metadata.name` → `name`
+  - `metadata.namespace` → `namespace` 
+  - `TypeMeta.Kind` → `kind`
+- **API Version Splitting**: Automatically splits `apiVersion` fields into separate components:
+  - Core API: `"v1"` → `apigroup: ""`, `apiversion: "v1"`
+  - Grouped API: `"apps/v1"` → `apigroup: "apps"`, `apiversion: "v1"`
+  - Complex groups: `"networking.k8s.io/v1"` → `apigroup: "networking.k8s.io"`, `apiversion: "v1"`
+
+Configuration is centralized in `configs/transform.json` with field mapping enabled by default using `metadata-prefix-removal` type.
+
 ### Reconciler
 Merges changes into the internal state.
 
